@@ -1,6 +1,6 @@
 {
   "expo": {
-    "scheme": "acme",
+    "scheme": "com.andresacunan.katchapp",
     "web": {
       "bundler": "metro"
     },
@@ -9,5 +9,5 @@
     ],
     "name": "KatchAppNew",
     "slug": "KatchAppNew"
-  }
+    }
 }

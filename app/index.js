@@ -1,17 +1,25 @@
 import React, { useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from './AuthContext';
 
 const Splash = () => {
   const router = useRouter();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/(tabs)/home');
+      if (!loading) {
+        if (user) {
+          router.replace('/(tabs)/home');
+        } else {
+          router.replace('/(tabs)/account');
+        }
+      }
     }, 4000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [loading, user]);
 
   return (
     <View style={styles.container}>
