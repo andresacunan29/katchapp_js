@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from 'firebase/auth';
+// import { getAnalytics } from "firebase/analytics";  // Uncomment if you plan to use analytics
 
 const firebaseConfig = {
   apiKey: "AIzaSyDUq6EAAJVrbKtxYp8nA2-GhOkuk9gf5zs",
@@ -12,9 +12,17 @@ const firebaseConfig = {
   measurementId: "G-NHQ8GZXWE3"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
+let app;
+let auth;
+// let analytics;  // Uncomment if you plan to use analytics
 
-export { auth };
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  // analytics = getAnalytics(app);  // Uncomment if you plan to use analytics
+} catch (error) {
+  console.error("Error initializing Firebase:", error);
+}
+
+export { app, auth };
+// export { app, auth, analytics };  // Use this line instead if you're using analytics

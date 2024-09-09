@@ -1,45 +1,59 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../AuthContext';// Import the AuthContext to use googleSignIn
 
 export default function Account() {
-  const { user, login, logout, register } = useAuth();
-  const [isRegistering, setIsRegistering] = useState(false);
+  const { currentUser, login, register, logout, googleSignIn } = useAuth(); // Destructure googleSignIn
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // New state for loading
 
   const handleAuth = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter both email and password");
+      return;
+    }
+    setIsLoading(true);  // Show loading state
     try {
       if (isRegistering) {
-        if (password !== confirmPassword) {
-          Alert.alert('Error', 'Passwords do not match. Please try again.');
-          return;
-        }
         await register(email, password);
-        Alert.alert('Success', 'Registration successful!');
+        Alert.alert("Success", "Registration successful!");
       } else {
         await login(email, password);
-        Alert.alert('Success', 'Login successful!');
+        Alert.alert("Success", "Login successful!");
       }
+      setEmail('');
+      setPassword('');
     } catch (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert("Error", error.message);
+    } finally {
+      setIsLoading(false); // Stop loading after completion
     }
   };
+
+const handleGoogleSignIn = async() => {
+  try {
+    await googleSignIn(); // call googleSignIn from AuthContext
+    Alert.alert("Success", "Signed in with Google successfully!");
+  } catch (error) {
+    Alert.alert("Error" , error.message);
+  }
+};
 
   const handleLogout = async () => {
     try {
       await logout();
-      Alert.alert('Success', 'Logged out successfully!');
+      Alert.alert("Success", "Logged out successfully!");
     } catch (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert("Error", "Failed to log out. Please try again.");
     }
   };
 
-  if (user) {
+  if (currentUser) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Welcome, {user.email}!</Text>
+        <Text style={styles.title}>Welcome, {currentUser.email}</Text>
         <TouchableOpacity style={styles.button} onPress={handleLogout}>
           <Text style={styles.buttonText}>Logout</Text>
         </TouchableOpacity>
@@ -49,55 +63,47 @@ export default function Account() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{isRegistering ? 'Create Account' : 'Login'}</Text>
-      
-      <Text style={styles.label}>Email</Text>
+      <Text style={styles.title}>{isRegistering ? 'Register' : 'Login'}</Text>
       <TextInput
         style={styles.input}
-        placeholder="Enter your email address"
+        placeholder="Email"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      
-      <Text style={styles.label}>Password</Text>
       <TextInput
         style={styles.input}
-        placeholder="Enter your password"
+        placeholder="Password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
       />
-      
-      {isRegistering && (
-        <>
-          <Text style={styles.label}>Confirm Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm your password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
-        </>
-      )}
-      
       <TouchableOpacity 
         style={styles.button} 
-        onPress={handleAuth}
+        onPress={handleAuth} 
+        disabled={isLoading}  // Disable button while loading
       >
-        <Text style={styles.buttonText}>{isRegistering ? 'Sign Up' : 'Login'}</Text>
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Processing...' : (isRegistering ? 'Register' : 'Login')} {/* Show loading text */}
+        </Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity onPress={() => {
-        setIsRegistering(!isRegistering);
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-      }}>
+
+      {/* Button for Google Sign In */}
+      <TouchableOpacity 
+        style={[styles.button, styles.googleButton]} 
+        onPress={handleGoogleSignIn}
+        disabled={isLoading}
+      >
+        <Text style={styles.buttonText}>
+          {isLoading ? 'Processing...' : 'Sign in with Google'}
+        </Text>
+      </TouchableOpacity>
+
+
+      <TouchableOpacity onPress={() => setIsRegistering(!isRegistering)}>
         <Text style={styles.switchText}>
-          {isRegistering ? 'Already have an account? Login' : 'Don\'t have an account? Sign Up'}
+          {isRegistering ? 'Already have an account? Login' : 'Don\'t have an account? Register'}
         </Text>
       </TouchableOpacity>
     </ScrollView>
@@ -116,29 +122,25 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  label: {
-    fontSize: 16,
-    marginBottom: 5,
-    color: '#333',
-  },
   input: {
     height: 40,
     borderColor: 'gray',
     borderWidth: 1,
-    marginBottom: 15,
+    marginBottom: 10,
     paddingHorizontal: 10,
-    borderRadius: 5,
-    backgroundColor: '#fff',
   },
   button: {
     backgroundColor: '#007AFF',
     padding: 10,
-    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  googleButton: {
+    backgroundColor: '#DB4437', // Google's brand color for the button
     marginTop: 10,
   },
   buttonText: {
     color: 'white',
-    textAlign: 'center',
     fontWeight: 'bold',
   },
   switchText: {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import FilterBar from './FilterBar';
+import { setStatusBarHidden } from 'expo-status-bar';
 
 const API_KEY = 'QlQCAYj0lhryo7bpmlFGXgDAI2PKAJ01';
 const BASE_URL = 'https://app.ticketmaster.com/discovery/v2/events.json';
@@ -13,6 +14,7 @@ export default function Home() {
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState(null);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true); // New state to track if there are more events
 
   useEffect(() => {
     fetchEvents();
@@ -40,25 +42,44 @@ export default function Home() {
         const newEvents = pageNumber === 0 ? response.data._embedded.events : [...events, ...response.data._embedded.events];
         setEvents(newEvents);
         setPage(pageNumber);
+ 
+        // check if there are fewer events than the requested page size, which means no more events
+
+        if (response.data._embedded.events.length<20){
+          setHasMoreEvents(false); // No more events to load
+        } else {
+          setHasMoreEvents(true); // More events to load
+        }
       } else {
         setError('No events found');
+        setHasMoreEvents(false); // Stop trying to add more events if none found
       }
     } catch (error) {
       console.error('Error fetching events:', error);
       setError('Failed to fetch events. Please try again later.');
+      setHasMoreEvents(false); // Stop loading more events in case of an error
     } finally {
       setLoading(false);
     }
   };
 
+  // Callback function for pull-to-refresh
+  const onRefresh = useCallback(() => {
+    setPage(0);
+    setHasMoreEvents(true); // Reset this when refreshing
+    fetchEvents(0);
+  }, []);
+
   const handleSearch = (query) => {
     setSearchQuery(query);
     setPage(0);
+    setHasMoreEvents(true); // Reset this when a new search is performed
   };
 
   const handleDateFilter = (date) => {
     setSelectedDate(date);
     setPage(0);
+    setHasMoreEvents(true); // Reset this when a new filter is applied
   };
 
   const renderEvent = ({ item }) => {
@@ -70,7 +91,7 @@ export default function Home() {
     const monthAbbr = date.toLocaleString('default', { month: 'short' });
     const dayOfMonth = date.getDate();
     const time = item.dates.start.localTime ? new Date(`2000-01-01T${item.dates.start.localTime}`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBA';
-
+    
     return (
       <View style={styles.eventContainer}>
         <View style={styles.eventContent}>
@@ -95,18 +116,29 @@ export default function Home() {
   };
 
   const handleLoadMore = () => {
-    if (!loading) {
+    if (!loading && hasMoreEvents) {
       fetchEvents(page + 1);
     }
   };
 
+  // Render the loading indicator at the bottom when more events are being fetched
   const renderFooter = () => {
-    if (!loading) return null;
+    if (!hasMoreEvents) {
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" />
-      </View>
-    );
+        <Text>No more events to load</Text>
+        </View>
+      );
+    }
+    if (loading) {
+      return (
+        <View style={styles.footerLoader}>
+          <ActivityIndicator size="small" />
+          <Text>Loading more events...</Text>
+        </View>
+      );
+    }
+    return null;
   };
 
   return (
@@ -132,6 +164,9 @@ export default function Home() {
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.1}
           ListFooterComponent={renderFooter}
+          // Add pull-to-refresh functionality
+          refreshing={loading}
+          onRefresh={onRefresh}
         />
       )}
     </View>
